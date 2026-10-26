@@ -1,0 +1,88 @@
+name: CI
+
+# Quando a pipeline roda
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------
+  # JOB 1: build + testes + cobertura
+  # ---------------------------------------------------------------
+  build-test-coverage:
+    name: Build, testes e cobertura
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v7
+
+      - name: Instalar o .NET 10
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restaurar dependências
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore
+
+      - name: Testes + coleta de cobertura
+        run: dotnet test --no-build --collect:"XPlat Code Coverage" --results-directory ./TestResults
+
+      - name: Restaurar ferramentas (ReportGenerator)
+        run: dotnet tool restore
+
+      - name: Gerar relatório de cobertura
+        run: dotnet reportgenerator -reports:"TestResults/**/coverage.cobertura.xml" -targetdir:"coveragereport" -reporttypes:"Html;MarkdownSummaryGithub"
+
+      - name: Publicar resumo da cobertura na execução
+        run: cat coveragereport/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Salvar relatório de cobertura (HTML)
+        uses: actions/upload-artifact@v7
+        with:
+          name: relatorio-cobertura
+          path: coveragereport
+
+  # ---------------------------------------------------------------
+  # JOB 2: SAST (análise estática de segurança) com CodeQL
+  # ---------------------------------------------------------------
+  sast:
+    name: SAST (CodeQL)
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v7
+
+      - name: Iniciar o CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: csharp
+          build-mode: none
+
+      - name: Analisar o código
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:csharp"
+          output: sarif-results
+
+      - name: Salvar relatório SAST (SARIF)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: relatorio-sast
+          path: sarif-results
