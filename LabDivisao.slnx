@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="LabDivisao.App/LabDivisao.App.csproj" />
+  <Project Path="LabDivisao.Tests/LabDivisao.Tests.csproj" />
+</Solution>
