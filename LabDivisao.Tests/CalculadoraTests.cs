@@ -14,6 +14,6 @@ public class CalculadoraTests
         var resultado = calculadora.Dividir(10, 2);
 
         // Assert
-        Assert.Equal(6, resultado);
+        Assert.Equal(5, resultado);
     }
 }
